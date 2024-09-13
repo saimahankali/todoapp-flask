@@ -2,3 +2,4 @@ Flask==2.0.3
 mysql-connector-python==8.0.27
 Werkzeug==2.0.3
 Gunicorn
+psycopg2-binary==2.9.6
