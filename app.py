@@ -5,8 +5,8 @@
 # db = mysql.connect(
 #     host='localhost',
 #     user='root',
-#     password='12345678',
-#     database='sample'
+#     password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
+#     database='sample_j5sf'
 # )
 
 from flask import Flask, render_template, redirect, request, session, url_for
@@ -18,10 +18,10 @@ app.secret_key = 'your_secret_key'  # Set a secret key for session management
 
 # Database connection
 db = psycopg2.connect(
-    host='your_host',
-    user='your_user',
-    password='your_password',
-    dbname='your_database'
+    host='dpg-cri9jdm8ii6s73d8chg0-a.oregon-postgres.render.com',
+    user='root',
+    password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
+    database='sample_j5sf'
 )
 
 cur = db.cursor()
