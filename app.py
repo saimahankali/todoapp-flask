@@ -11,23 +11,21 @@
 
 from flask import Flask, render_template, redirect, request, session, url_for
 import psycopg2
+from psycopg2 import sql
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Set a secret key for session management
+app.secret_key = 'your_secret_key'  # Change to a secure key
 
 # Database connection
-db = psycopg2.connect(
-    host='dpg-cri9jdm8ii6s73d8chg0-a.oregon-postgres.render.com',
-    user='root',
-    password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
-    database='sample_j5sf'
-)
-
-cur = db.cursor()
-
-app = Flask(__name__)
-app.secret_key = 'ms123'
+def get_db_connection():
+    conn = psycopg2.connect(
+        host='dpg-cri9jdm8ii6s73d8chg0-a.oregon-postgres.render.com',
+        user='root',
+        password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
+        database='sample_j5sf'
+    )
+    return conn
 
 # User registration
 @app.route('/register', methods=['GET', 'POST'])
@@ -35,18 +33,18 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        sql = 'select username from user where username = %s'
-        cur.execute(sql,(username,))
-        record = cur.fetchall()
-        print(record)
-        if len(record) != 0:
-            return render_template('register.html',msg1='',msg = 'User Already exists!')
-        else:
-            hashed_password = generate_password_hash(password, method='sha256')
-            cur.execute('INSERT INTO user (username, password) VALUES (%s, %s)', (username, hashed_password))
-            db.commit()
-            return render_template('/login.html',msg1 = 'SignUp Sucessfull please Login!')
-    return render_template('register.html',msg=' ',msg1 = '')
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT username FROM "user" WHERE username = %s', (username,))
+                record = cur.fetchall()
+                if record:
+                    return render_template('register.html', msg1='', msg='User Already exists!')
+                else:
+                    hashed_password = generate_password_hash(password, method='sha256')
+                    cur.execute('INSERT INTO "user" (username, password) VALUES (%s, %s)', (username, hashed_password))
+                    conn.commit()
+                    return render_template('login.html', msg1='SignUp Successful, please Login!')
+    return render_template('register.html', msg=' ', msg1='')
 
 # User login
 @app.route('/login', methods=['GET', 'POST'])
@@ -54,19 +52,16 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        sql = 'select username from user where username = %s'
-        cur.execute(sql,(username,))
-        record = cur.fetchall()
-        if len(record) == 0:
-            return render_template('login.html',msg = 'User does not exist!')
-        cur.execute('SELECT * FROM user WHERE username = %s', (username,))
-        user = cur.fetchone()
-        if user and check_password_hash(user[2], password):
-            session['user_id'] = user[0]
-            return redirect('/')
-        else:
-            return render_template('login.html',msg = 'Invalid Credentials')
-    return render_template('login.html',msg = '')
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT * FROM "user" WHERE username = %s', (username,))
+                user = cur.fetchone()
+                if user and check_password_hash(user[2], password):
+                    session['user_id'] = user[0]
+                    return redirect('/')
+                else:
+                    return render_template('login.html', msg='Invalid Credentials')
+    return render_template('login.html', msg='')
 
 # User logout
 @app.route('/logout')
@@ -81,7 +76,7 @@ def home():
         return redirect('/login')
 
     limit = request.args.get('limit', '10')
-    if not limit or not limit.isdigit():
+    if not limit.isdigit():
         limit = 10
     else:
         limit = int(limit)
@@ -91,53 +86,40 @@ def home():
 
     search = request.args.get('search', '')
 
-    if search:
-        sql = """
-            SELECT * FROM taskapp
-            WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
-            AND user_id = %s
-            LIMIT %s OFFSET %s
-        """
-        search_pattern = f'%{search}%'
-        values = (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id'], limit, offset)
-        
-        cur.execute(sql, values)
-        records = cur.fetchall()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            if search:
+                search_pattern = f'%{search}%'
+                cur.execute(sql.SQL("""
+                    SELECT * FROM taskapp
+                    WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
+                    AND user_id = %s
+                    LIMIT %s OFFSET %s
+                """), (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id'], limit, offset))
+                records = cur.fetchall()
 
-        cur.execute("""
-            SELECT count(*) FROM taskapp
-            WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
-            AND user_id = %s
-        """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id']))
-        total_records = cur.fetchone()[0]
-    else:
-        sql = """
-            SELECT * FROM taskapp
-            WHERE user_id = %s
-            LIMIT %s OFFSET %s
-        """
-        values = (session['user_id'], limit, offset)
-        
-        cur.execute(sql, values)
-        records = cur.fetchall()
+                cur.execute(sql.SQL("""
+                    SELECT COUNT(*) FROM taskapp
+                    WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
+                    AND user_id = %s
+                """), (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id']))
+                total_records = cur.fetchone()[0]
+            else:
+                cur.execute('SELECT * FROM taskapp WHERE user_id = %s LIMIT %s OFFSET %s', (session['user_id'], limit, offset))
+                records = cur.fetchall()
 
-        cur.execute("""
-            SELECT count(*) FROM taskapp
-            WHERE user_id = %s
-        """, (session['user_id'],))
-        total_records = cur.fetchone()[0]
+                cur.execute('SELECT COUNT(*) FROM taskapp WHERE user_id = %s', (session['user_id'],))
+                total_records = cur.fetchone()[0]
 
     total_pages = (total_records + limit - 1) // limit
-
     return render_template('index.html', tasks=records, page=page, total_records=total_records, total_pages=total_pages)
 
-
+# Add task route
 @app.route('/addTask')
 def addTask():
     return render_template('addTask.html')
 
-
-# Add task route
+# Add task data
 @app.route('/addTaskData', methods=['POST'])
 def addTaskData():
     if 'user_id' not in session:
@@ -148,43 +130,51 @@ def addTaskData():
     deadline = request.form['deadline']
     priority = request.form['priority']
     info = request.form['info']
-    sql = 'INSERT INTO taskapp (assignedto, status, deadline, priority, info, user_id) VALUES (%s, %s, %s, %s, %s, %s)'
-    values = (assigned, status, deadline, priority, info, session['user_id'])
-    cur.execute(sql, values)
-    db.commit()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('INSERT INTO taskapp (assignedto, status, deadline, priority, info, user_id) VALUES (%s, %s, %s, %s, %s, %s)',
+                        (assigned, status, deadline, priority, info, session['user_id']))
+            conn.commit()
+
     return redirect('/')
 
-
-@app.route('/editTask/<int:id>',methods = ['get'])
+# Edit task route
+@app.route('/editTask/<int:id>', methods=['GET'])
 def editTask(id):
-    sql = 'select * from taskapp where id = %s'
-    values = (id,)
-    cur.execute(sql,values)
-    record = cur.fetchone()
-    return render_template('editTask.html',task = record)
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM taskapp WHERE id = %s', (id,))
+            record = cur.fetchone()
+    return render_template('editTask.html', task=record)
 
-
-@app.route('/editTaskData/<int:id>',methods = ['post'])
+# Edit task data
+@app.route('/editTaskData/<int:id>', methods=['POST'])
 def editTaskData(id):
-    sql = 'update taskapp set assignedto = %s,status = %s, deadline = %s,priority = %s, info = %s where id = %s'
     assigned = request.form['assignedto']
     status = request.form['status']
     deadline = request.form['deadline']
     priority = request.form['priority']
     info = request.form['info']
-    values = (assigned,status,deadline,priority,info,id)
-    cur.execute(sql,values)
-    db.commit()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('UPDATE taskapp SET assignedto = %s, status = %s, deadline = %s, priority = %s, info = %s WHERE id = %s',
+                        (assigned, status, deadline, priority, info, id))
+            conn.commit()
+
     return redirect('/')
 
-@app.route('/deleteTask/<int:id>',methods=['get'])
+# Delete task route
+@app.route('/deleteTask/<int:id>', methods=['GET'])
 def deleteTask(id):
-    sql = 'delete from taskapp where id = %s'
-    values = (id,)
-    cur.execute(sql,values)
-    db.commit()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('DELETE FROM taskapp WHERE id = %s', (id,))
+            conn.commit()
+
     return redirect('/')
-# Edit and delete routes remain the same, just add a check to ensure the user is logged in
 
 if __name__ == '__main__':
     app.run(debug=True)
+
