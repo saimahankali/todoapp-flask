@@ -1,30 +1,16 @@
-# from flask import Flask, render_template, redirect, request, session, url_for
-# import mysql.connector as mysql
-# from werkzeug.security import generate_password_hash, check_password_hash
-
-# db = mysql.connect(
-#     host='localhost',
-#     user='root',
-#     password='12345678',
-#     database='sample'
-# )
-
-
 from flask import Flask, render_template, redirect, request, session, url_for
-import psycopg2  # Changed to psycopg2 for PostgreSQL
+import mysql.connector as mysql
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
 
-# Set up the connection to the PostgreSQL database using environment variables
-db = psycopg2.connect(
-    host='dpg-cri9jdm8ii6s73d8chg0-a',
+db = mysql.connect(
+    host='localhost',
     user='root',
-    password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
-    database='sample_j5sf'
+    password='12345678',
+    database='sample'
 )
-cur = db.cursor()
 
-# cur = db.cursor()
+
+cur = db.cursor()
 
 app = Flask(__name__)
 app.secret_key = 'ms123'
