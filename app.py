@@ -1,14 +1,28 @@
+# from flask import Flask, render_template, redirect, request, session, url_for
+# import mysql.connector as mysql
+# from werkzeug.security import generate_password_hash, check_password_hash
+
+# db = mysql.connect(
+#     host='localhost',
+#     user='root',
+#     password='12345678',
+#     database='sample'
+# )
+
 from flask import Flask, render_template, redirect, request, session, url_for
-import mysql.connector as mysql
+import psycopg2
 from werkzeug.security import generate_password_hash, check_password_hash
 
-db = mysql.connect(
-    host='localhost',
-    user='root',
-    password='12345678',
-    database='sample'
-)
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Set a secret key for session management
 
+# Database connection
+db = psycopg2.connect(
+    host='your_host',
+    user='your_user',
+    password='your_password',
+    dbname='your_database'
+)
 
 cur = db.cursor()
 
