@@ -17,10 +17,10 @@ import os
 
 # Set up the connection to the PostgreSQL database using environment variables
 db = psycopg2.connect(
-    host=os.getenv('DB_HOSTNAME', 'dpg-cri9jdm8ii6s73d8chg0-a'),
-    user=os.getenv('DB_USERNAME', 'root'),
-    password=os.getenv('DB_PASSWORD', 'oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ'),
-    database=os.getenv('DB_NAME', 'sample_j5sf')
+    host='dpg-cri9jdm8ii6s73d8chg0-a',
+    user='root',
+    password='oXVePzWdocvc1LJFlKaGWPWf5VyWJ4UQ',
+    database='sample_j5sf'
 )
 cur = db.cursor()
 
