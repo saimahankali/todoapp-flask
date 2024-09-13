@@ -76,43 +76,52 @@ def home():
         return redirect('/login')
 
     limit = request.args.get('limit', '10')
-    if not limit.isdigit():
-        limit = 10
-    else:
-        limit = int(limit)
-
+    limit = int(limit) if limit.isdigit() else 10
     page = int(request.args.get('page', '1'))
     offset = (page - 1) * limit
 
     search = request.args.get('search', '')
+    db = get_db_connection()
+    cur = db.cursor()
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            if search:
-                search_pattern = f'%{search}%'
-                cur.execute(sql.SQL("""
-                    SELECT * FROM taskapp
-                    WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
-                    AND user_id = %s
-                    LIMIT %s OFFSET %s
-                """), (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id'], limit, offset))
-                records = cur.fetchall()
+    try:
+        if search:
+            search_pattern = f'%{search}%'
+            cur.execute("""
+                SELECT * FROM taskapp
+                WHERE (assignedto ILIKE %s OR status ILIKE %s OR deadline ILIKE %s OR priority ILIKE %s OR info ILIKE %s)
+                AND user_id = %s
+                LIMIT %s OFFSET %s
+            """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id'], limit, offset))
+            records = cur.fetchall()
 
-                cur.execute(sql.SQL("""
-                    SELECT COUNT(*) FROM taskapp
-                    WHERE (assignedto LIKE %s OR status LIKE %s OR deadline LIKE %s OR priority LIKE %s OR info LIKE %s)
-                    AND user_id = %s
-                """), (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id']))
-                total_records = cur.fetchone()[0]
-            else:
-                cur.execute('SELECT * FROM taskapp WHERE user_id = %s LIMIT %s OFFSET %s', (session['user_id'], limit, offset))
-                records = cur.fetchall()
+            cur.execute("""
+                SELECT count(*) FROM taskapp
+                WHERE (assignedto ILIKE %s OR status ILIKE %s OR deadline ILIKE %s OR priority ILIKE %s OR info ILIKE %s)
+                AND user_id = %s
+            """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, session['user_id']))
+            total_records = cur.fetchone()[0]
+        else:
+            cur.execute("""
+                SELECT * FROM taskapp
+                WHERE user_id = %s
+                LIMIT %s OFFSET %s
+            """, (session['user_id'], limit, offset))
+            records = cur.fetchall()
 
-                cur.execute('SELECT COUNT(*) FROM taskapp WHERE user_id = %s', (session['user_id'],))
-                total_records = cur.fetchone()[0]
+            cur.execute("""
+                SELECT count(*) FROM taskapp
+                WHERE user_id = %s
+            """, (session['user_id'],))
+            total_records = cur.fetchone()[0]
 
-    total_pages = (total_records + limit - 1) // limit
+        total_pages = (total_records + limit - 1) // limit
+    finally:
+        cur.close()
+        db.close()
+
     return render_template('index.html', tasks=records, page=page, total_records=total_records, total_pages=total_pages)
+
 
 # Add task route
 @app.route('/addTask')
