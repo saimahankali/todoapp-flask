@@ -19,7 +19,7 @@ This is a simple **To-Do List Web Application** built using HTML, CSS, JavaScrip
 - `app.py`: Flask backend for handling requests.
 - `templates/`: Holds the HTML files for rendering views.
 
-##Python Backend:
+## Python Backend:
 app.py: Contains the Flask backend logic to handle routing, user authentication, and task management.
 
 ## Getting Started
