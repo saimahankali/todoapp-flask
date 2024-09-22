@@ -165,8 +165,8 @@
                     <td>{{ task[3] }}</td>
                     <td>{{ task[4] }}</td>
                     <td>{{ task[5] }}</td>
-                    <td><a href="{{ url_for('editTask', id=task[0]) }}">Edit</a></td>
-                    <td><a href="{{ url_for('deleteTask', id=task[0]) }}" onclick="return confirm('Are you sure you want to delete this task?');">Delete</a></td>
+                    <td><a style="color:green" href="{{ url_for('editTask', id=task[0]) }}">Edit</a></td>
+                    <td><a style="color:red" href="{{ url_for('deleteTask', id=task[0]) }}" onclick="return confirm('Are you sure you want to delete this task?');">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
